@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>隐私政策 · 三才防火墙（SancaiFirewall）</title>
+<style>
+  :root { --fg:#1c1c1e; --muted:#5a5a60; --line:#e3e3e8; --bg:#fff; --accent:#2b5cff; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font: 16px/1.75 -apple-system, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 56px 24px 96px; }
+  h1 { font-size: 30px; margin: 0 0 6px; letter-spacing: .3px; }
+  .sub { color: var(--muted); font-size: 14px; margin-bottom: 40px; }
+  h2 { font-size: 19px; margin: 40px 0 10px; padding-top: 18px; border-top: 1px solid var(--line); }
+  p, li { color: #26262a; }
+  ul { padding-left: 22px; }
+  .en { margin-top: 72px; }
+  .en h1 { font-size: 25px; }
+  .en h2 { font-size: 17px; }
+  code { background:#f4f4f6; padding:1px 5px; border-radius:4px; font-size: 14px; }
+  .box { background:#f7f8fa; border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin:22px 0; }
+  a { color: var(--accent); }
+  footer { margin-top:64px; color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>隐私政策</h1>
+  <div class="sub">三才防火墙（SancaiFirewall）· 生效日期：2026-11-26 · 版本：0.9.2</div>
+
+  <div class="box">
+    <strong>一句话概括：</strong>本软件是运行在你自己电脑上的本地安全工具。规则、审计记录与密钥全部只存放在本机，
+    开发者不设立服务器、不收集、不上传、不查看你的任何网络数据与使用记录。
+  </div>
+
+  <h2>一、我们收集什么</h2>
+  <p><strong>不收集。</strong>本软件不包含账号系统，不需要注册或登录，不接入用户行为分析、广告或统计 SDK，
+  不采集设备标识、硬件指纹或崩溃日志。开发者不会收到你本机的流量记录、规则配置、审计链或使用时长。</p>
+
+  <h2>二、数据保存在哪里</h2>
+  <p>所有运行期数据保存在本机数据目录：</p>
+  <ul>
+    <li>默认位置：<code>%ProgramData%\SancaiFirewall\data</code></li>
+    <li>绿色版：解压目录下的 <code>data</code> 文件夹，随目录移动，不写入系统用户目录</li>
+  </ul>
+  <p>该目录内的文件及用途：</p>
+  <ul>
+    <li><code>rules.json</code> — 你编写或导入的防护规则，可编辑</li>
+    <li><code>seal.key</code> — 本机印信密钥，用于审计记录的封印校验，每台机器各不相同</li>
+    <li><code>users.json</code> — 本机操作口令（以哈希形式保存，不含明文）</li>
+    <li><code>audit_chain.jsonl</code> — 审计链，记录规则变更与判决事件，用于取证与自证</li>
+    <li><code>evolution_ledger.json</code> — 版本进化台账与律缺统计</li>
+    <li><code>logs\</code> — 服务运行日志</li>
+  </ul>
+  <p>上述文件不会离开你的电脑。<strong>卸载软件不会自动删除数据目录</strong>；如需彻底清除，请手动删除该目录。
+  删除 <code>seal.key</code> 与 <code>audit_chain.jsonl</code> 会使既有审计链失去校验能力，请先备份。</p>
+
+  <h2>三、本软件处理的网络信息</h2>
+  <p>作为防火墙工具，本软件需要在<strong>本机</strong>处理网络连接信息以做出放行或拦截的判决，处理范围严格限定为连接元数据：</p>
+  <ul>
+    <li>源地址、目的地址、源端口、目的端口、协议类型、字节数</li>
+    <li>连接发生时间与命中的规则编号</li>
+  </ul>
+  <p>本软件<strong>不解析、不记录、不落盘通信内容正文</strong>，不对加密流量做解密，不保存网页、邮件、消息或文件内容。
+  可选的 pcap 接入仅在你自己手动启用时工作，用于读取本机 pcap/pcapng 文件或实时抓包做规则回放，
+  其提取结果同样只有上述元数据。这些信息只写入本机审计链，不上传。</p>
+
+  <h2>四、联网与第三方服务</h2>
+  <p>本软件默认可完全离线运行，仅在以下情形可能发起一次网络请求，且均由你主动触发：</p>
+  <ul>
+    <li><strong>数字签名时间戳：</strong>当你选择对安装包或更新包签名时，安装器会向公共时间戳服务
+      （<code>timestamp.digicert.com</code>）提交该文件的哈希摘要以获取可信时间戳。提交内容为摘要值，
+      不包含文件正文、规则内容或任何个人信息。若不需要可信时间戳，可跳过签名环节，安装流程全程不联网。</li>
+  </ul>
+  <p>本软件不连接开发者服务器，不含自动更新回传、云端情报订阅或远程控制通道。上述第三方服务的处理行为适用其自身隐私政策。</p>
+
+  <h2>五、系统权限说明</h2>
+  <ul>
+    <li><strong>管理员权限：</strong>用于读取与下发 Windows 防火墙规则、安装并管理守护服务。非管理员运行时功能受限，但不会越权。</li>
+    <li><strong>守护服务：</strong><code>SancaiGuardService.exe</code> 作为 Windows 服务常驻，负责在后台维持规则生效并写入本机审计链，不产生对外通信。</li>
+    <li><strong>开机自启：</strong>安装时按你的选择注册，可随时在系统服务管理器中停用或卸载。</li>
+  </ul>
+
+  <h2>六、你的权利</h2>
+  <p>由于数据全部保存在你本机，你可以随时自行查看、导出、修改与删除：直接操作数据目录，或在软件内管理规则与审计记录。
+  开发者不持有你的数据，因此不存在开发者侧的查询、更正或删除动作；如需彻底清除，删除数据目录即可。</p>
+
+  <h2>七、儿童隐私</h2>
+  <p>本软件是面向成人用户的系统安全工具，不面向儿童设计，也不会有意收集 13 岁以下儿童的任何信息。</p>
+
+  <h2>八、政策变更与联系方式</h2>
+  <p>政策随版本更新，最新版本与本页顶部标注一致。条款发生实质变化时，会在新版本文档中注明。
+  如有疑问，请联系：<a href="mailto:mxh6789@live.cn">mxh6789@live.cn</a></p>
+
+  <div class="en">
+    <h1>Privacy Policy</h1>
+    <div class="sub">SancaiFirewall · Effective: 2026-11-26 · Version: 0.9.2</div>
+
+    <h2>Summary</h2>
+    <p>SancaiFirewall is a local desktop security tool. All rules, audit records and keys stay on your own computer.
+    The developer operates no server and does not collect, upload or access your network data or usage records.</p>
+
+    <h2>Data storage</h2>
+    <p>Runtime data is stored locally at <code>%ProgramData%\SancaiFirewall\data</code>
+    (portable edition: the <code>data</code> folder inside the program directory).
+    Uninstalling does not delete this folder; remove it manually for a full wipe.</p>
+
+    <h2>Network information processed</h2>
+    <p>To decide allow or block, the app processes connection metadata only: source/destination address and port,
+    protocol, byte counts, timestamp and matched rule id. Message payloads are never parsed, logged or stored.
+    Nothing is transmitted off your machine.</p>
+
+    <h2>Third-party services</h2>
+    <p>If you choose to sign a package, its file hash digest is submitted to a public timestamp authority
+    (<code>timestamp.digicert.com</code>) to obtain a trusted timestamp. No file content or personal data is sent.
+    The app runs fully offline when signing is skipped.</p>
+
+    <h2>Contact</h2>
+    <p><a href="mailto:mxh6789@live.cn">mxh6789@live.cn</a></p>
+  </div>
+
+  <footer>
+    © BY LAOMENG 网络工作室 · 三才防火墙（SancaiFirewall）· 本页适用于 0.9.x 版本线
+  </footer>
+
+</div>
+</body>
+</html>
