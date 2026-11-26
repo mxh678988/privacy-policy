@@ -28,16 +28,18 @@
 <div class="wrap">
 
   <h1>隐私政策</h1>
-  <div class="sub">三才防火墙（SancaiFirewall）· 生效日期：2026-11-26 · 版本：0.9.2</div>
+  <div class="sub">三才防火墙（SancaiFirewall）· 生效日期：2026-11-26 · 版本：0.10.0</div>
 
   <div class="box">
-    <strong>一句话概括：</strong>本软件是运行在你自己电脑上的本地安全工具。规则、审计记录与密钥全部只存放在本机，
-    开发者不设立服务器、不收集、不上传、不查看你的任何网络数据与使用记录。
+    <strong>一句话概括：</strong>本软件是运行在你自己电脑上的本地安全工具。规则、审计记录与密钥全部只存放在本机；
+    出厂状态下不发起任何对外通信，不收集、不上传、不查看你的网络数据与使用记录。唯一可选的对外通道是「云防护问询」，
+    默认关闭，须你显式授权才会启用（见第四节），且只发送去标识后的流量元数据，绝不发送通信内容与明文地址。
   </div>
 
   <h2>一、我们收集什么</h2>
-  <p><strong>不收集。</strong>本软件不包含账号系统，不需要注册或登录，不接入用户行为分析、广告或统计 SDK，
-  不采集设备标识、硬件指纹或崩溃日志。开发者不会收到你本机的流量记录、规则配置、审计链或使用时长。</p>
+  <p><strong>默认不收集。</strong>本软件不包含账号系统，不需要注册或登录，不接入用户行为分析、广告或统计 SDK，
+  不采集设备标识、硬件指纹或崩溃日志。开发者不会收到你本机的流量记录、规则配置、审计链或使用时长。
+  仅当你自行开启第四节所述的可选云防护问询时，本软件才会向该通道发送一组去标识后的流量元数据。</p>
 
   <h2>二、数据保存在哪里</h2>
   <p>所有运行期数据保存在本机数据目录：</p>
@@ -52,6 +54,8 @@
     <li><code>users.json</code> — 本机操作口令（以哈希形式保存，不含明文）</li>
     <li><code>audit_chain.jsonl</code> — 审计链，记录规则变更与判决事件，用于取证与自证</li>
     <li><code>evolution_ledger.json</code> — 版本进化台账与律缺统计</li>
+    <li><code>cloud_state.json</code> — 云防护问询的本地开关状态（仅在启用过云防护后生成，权限 <code>0600</code>）</li>
+    <li><code>cloud_gap_ledger.jsonl</code>、<code>cloud_gap_summary.json</code> — 云防护相关的「律缺」记账台账与汇总</li>
     <li><code>logs\</code> — 服务运行日志</li>
   </ul>
   <p>上述文件不会离开你的电脑。<strong>卸载软件不会自动删除数据目录</strong>；如需彻底清除，请手动删除该目录。
@@ -65,64 +69,178 @@
   </ul>
   <p>本软件<strong>不解析、不记录、不落盘通信内容正文</strong>，不对加密流量做解密，不保存网页、邮件、消息或文件内容。
   可选的 pcap 接入仅在你自己手动启用时工作，用于读取本机 pcap/pcapng 文件或实时抓包做规则回放，
-  其提取结果同样只有上述元数据。这些信息只写入本机审计链，不上传。</p>
+  其提取结果同样只有上述元数据。这些信息只写入本机审计链，不上传——唯一例外是你显式开启的云防护问询（见第四节），
+  且它只发送去标识后的元数据，不含明文地址与任何内容。</p>
 
-  <h2>四、联网与第三方服务</h2>
-  <p>本软件默认可完全离线运行，仅在以下情形可能发起一次网络请求，且均由你主动触发：</p>
+  <h2>四、可选云防护问询（默认关闭）</h2>
+  <div class="box">
+    <strong>当前状态：</strong>本版本对云防护问询保持关闭态。该通道默认不启用，出厂配置下不会发出任何请求；
+    并且当前版本尚未接入真实云端服务端，默认端点为保留占位域（<code>cloud-guard.sancai.invalid</code>），
+    该域按标准永不可解析，因此即便误开也不会真正产生出网数据。
+  </div>
+  <p><strong>1. 默认关闭与开启方式。</strong>云防护问询出厂关闭（代码级默认值 <code>DEFAULT_ENABLED=False</code>）。
+  开启必须同时满足两个条件，缺一即拒绝并保持关闭：一是你在软件内明确表示同意（<code>consent=True</code>）；
+  二是配置的端点必须是 <code>https://</code> 地址。仅勾选同意、或仅填写端点，都不足以开启。</p>
+
+  <p><strong>2. 发送什么。</strong>开启后，每次问询只发送下列 14 项元数据，另加 1 个标识客户端版本的请求头（<code>X-Sancai-Client</code>）：</p>
+  <ul>
+    <li><code>schema</code>（载荷格式版本）、<code>client_version</code>（客户端版本号）</li>
+    <li><code>protocol</code>（传输层协议）、<code>port</code>（目的端口）、<code>tcp_flags</code>（TCP 标志位）</li>
+    <li><code>size_bucket</code>（按 512 字节分桶的包长量级）、<code>ts_bucket</code>（时间分桶）</li>
+    <li><code>src_digest</code>、<code>dst_digest</code>（源/目的地址的加盐摘要）、<code>subnet_digest</code>（/24 网段粗化后的摘要）</li>
+    <li><code>local_verdict</code>、<code>local_action</code>、<code>local_confidence</code>（本机判决结论、动作与置信度）</li>
+    <li><code>nonce</code>（逐请求随机串，用于去重，不用于追踪个人）</li>
+  </ul>
+
+  <p><strong>3. 如何去掉可识别性。</strong>地址不以明文出网：源地址与目的地址先与本地随机盐做摘要，只取截短后的摘要值；
+  网段只保留 /24 级别的粗粒度摘要；包长按 512 字节分桶，只留量级不留精确值；时间做分桶处理；
+  每次请求附带一次性 <code>nonce</code>。<strong>该盐只保存在你本机，从不随请求上传</strong>，因此摘要无法被第三方反推为具体地址。</p>
+
+  <p><strong>4. 明确禁传的内容。</strong>载荷中一旦出现下列 38 个明文字段名之一，整包拒发（不是删除字段后再发）：
+  <code>payload</code>、<code>raw</code>、<code>body</code>、<code>content</code>、<code>data</code>、
+  <code>url</code>、<code>uri</code>、<code>host</code>、<code>hostname</code>、<code>domain</code>、<code>sni</code>、<code>referer</code>、
+  <code>path</code>、<code>file</code>、<code>filename</code>、<code>cookie</code>、<code>token</code>、<code>auth</code>、<code>password</code>、
+  <code>user</code>、<code>username</code>、<code>uid</code>、<code>email</code>、<code>phone</code>、<code>mac</code>、<code>imei</code>、
+  <code>device_id</code>、<code>cert</code>、<code>certificate</code>、<code>ja3</code>、<code>ja4</code>、<code>dns</code>、
+  <code>src_ip</code>、<code>dst_ip</code>、<code>ip</code>、<code>geo</code>、<code>asn</code>、<code>org</code>。
+  除字段名外还做 5 类值级自检：明文 IPv4 地址、邮箱地址、任意 <code>scheme://</code> 形式的链接、
+  主机名/域名、Windows 路径。出现白名单之外的字段、嵌套结构或单字段超长（超过 64 字符）同样视为不合格。
+  上述任一命中即整包不发，绝不"删掉敏感字段后再发"。</p>
+
+  <p><strong>5. 本地留存什么。</strong>只留存配置，不留数据：<code>cloud_state.json</code>（格式版本 <code>cloud-state/1</code>，
+  权限 <code>0600</code>）仅记录是否启用、同意状态与同意时间、端点、采样率、超时、本地盐与时间戳。
+  本软件<strong>不保存</strong>流量原文、明文地址、云端回执原文。</p>
+
+  <p><strong>6. 云端结论的边界。</strong>云防护问询只用于一件事：把本机末档判决往更严的方向抬一档。
+  它<strong>永不放宽</strong>本机判决，<strong>永不修改</strong>原判决的证据链（记录中 <code>evidence_chain_untouched</code> 恒为真），
+  越过一档需更高置信度（<code>0.85</code>）且会留下被压回一档的痕迹；未被采纳的问询同样留痕，便于事后核查。
+  云端不可达或超时（默认 <code>1200</code> 毫秒）时直接放弃该次问询，判决完全回落到本机逻辑，不影响防护效果。</p>
+
+  <p><strong>7. 随时撤回。</strong>你可以随时关闭云防护：关闭动作即时停止所有出网请求，并把 <code>consent=False</code> 落盘。
+  你也可以把云防护模块从判定链路上整体摘除，摘除后软件回到纯本地判决模式，不再有任何对外问询。</p>
+
+  <p><strong>8. 律缺台账只存本地。</strong>云防护过程中产生的「律缺」记账（云条失名、云条变形、待云补条）
+  写入本机的 <code>cloud_gap_ledger.jsonl</code> 与 <code>cloud_gap_summary.json</code>（格式版本 <code>cloud-gap/1</code>，
+  与 <code>cloud_state.json</code> 同目录），<strong>只存本地、不上传、云端不可见</strong>。台账落盘失败时软件静默处理并留下错误痕迹，
+  判决链路照常给出结论，不会因此中断。</p>
+
+  <p><strong>9. 启用真实端点前的前置条件。</strong>在接入真实云端服务端之前，仍须完成若干前置项：独立成文的隐私合规变更清单、
+  面向用户的告知文本、数据处理协议留存、数据出境评估、日志脱敏、最小必要再验证，以及云侧律缺记账的落盘。在这些工作完成之前，
+  本软件保持云防护关闭态。</p>
+
+  <h2>五、联网与第三方服务</h2>
+  <p>除第四节所述的可选云防护问询外，本软件默认可完全离线运行，仅在以下情形可能发起一次网络请求，且均由你主动触发：</p>
   <ul>
     <li><strong>数字签名时间戳：</strong>当你选择对安装包或更新包签名时，安装器会向公共时间戳服务
       （<code>timestamp.digicert.com</code>）提交该文件的哈希摘要以获取可信时间戳。提交内容为摘要值，
       不包含文件正文、规则内容或任何个人信息。若不需要可信时间戳，可跳过签名环节，安装流程全程不联网。</li>
   </ul>
-  <p>本软件不连接开发者服务器，不含自动更新回传、云端情报订阅或远程控制通道。上述第三方服务的处理行为适用其自身隐私政策。</p>
+  <p>本软件不含自动更新回传、云端情报订阅或远程控制通道，也不会在后台自行向开发者服务器发送任何数据；
+  云防护问询在出厂配置下处于关闭状态。上述第三方服务的处理行为适用其自身隐私政策。</p>
 
-  <h2>五、系统权限说明</h2>
+  <h2>六、系统权限说明</h2>
   <ul>
     <li><strong>管理员权限：</strong>用于读取与下发 Windows 防火墙规则、安装并管理守护服务。非管理员运行时功能受限，但不会越权。</li>
     <li><strong>守护服务：</strong><code>SancaiGuardService.exe</code> 作为 Windows 服务常驻，负责在后台维持规则生效并写入本机审计链，不产生对外通信。</li>
     <li><strong>开机自启：</strong>安装时按你的选择注册，可随时在系统服务管理器中停用或卸载。</li>
   </ul>
 
-  <h2>六、你的权利</h2>
+  <h2>七、你的权利</h2>
   <p>由于数据全部保存在你本机，你可以随时自行查看、导出、修改与删除：直接操作数据目录，或在软件内管理规则与审计记录。
+  对可选云防护，你可以随时关闭通道、撤回同意，并删除 <code>cloud_state.json</code> 与律缺台账文件以清除其本地留存。
   开发者不持有你的数据，因此不存在开发者侧的查询、更正或删除动作；如需彻底清除，删除数据目录即可。</p>
 
-  <h2>七、儿童隐私</h2>
+  <h2>八、儿童隐私</h2>
   <p>本软件是面向成人用户的系统安全工具，不面向儿童设计，也不会有意收集 13 岁以下儿童的任何信息。</p>
 
-  <h2>八、政策变更与联系方式</h2>
+  <h2>九、政策变更与联系方式</h2>
   <p>政策随版本更新，最新版本与本页顶部标注一致。条款发生实质变化时，会在新版本文档中注明。
   如有疑问，请联系：<a href="mailto:mxh6789@live.cn">mxh6789@live.cn</a></p>
 
   <div class="en">
     <h1>Privacy Policy</h1>
-    <div class="sub">SancaiFirewall · Effective: 2026-11-26 · Version: 0.9.2</div>
+    <div class="sub">SancaiFirewall · Effective: 2026-11-26 · Version: 0.10.0</div>
 
     <h2>Summary</h2>
     <p>SancaiFirewall is a local desktop security tool. All rules, audit records and keys stay on your own computer.
-    The developer operates no server and does not collect, upload or access your network data or usage records.</p>
+    As shipped, the app makes no outbound communication and does not collect, upload or access your network data or
+    usage records. The only optional outbound channel is the cloud verification query described in section 4; it is off
+    by default, requires your explicit consent, and sends de-identified traffic metadata only — never message content or
+    plaintext addresses.</p>
 
     <h2>Data storage</h2>
     <p>Runtime data is stored locally at <code>%ProgramData%\SancaiFirewall\data</code>
     (portable edition: the <code>data</code> folder inside the program directory).
+    Cloud verification adds two local-only artifacts: <code>cloud_state.json</code> (permission <code>0600</code>)
+    holding the switch state, and the gap ledger files <code>cloud_gap_ledger.jsonl</code> /
+    <code>cloud_gap_summary.json</code>.
     Uninstalling does not delete this folder; remove it manually for a full wipe.</p>
 
     <h2>Network information processed</h2>
     <p>To decide allow or block, the app processes connection metadata only: source/destination address and port,
     protocol, byte counts, timestamp and matched rule id. Message payloads are never parsed, logged or stored.
-    Nothing is transmitted off your machine.</p>
+    This data is written to the local audit chain and is not transmitted — the single exception is the optional cloud
+    verification query described below, which sends de-identified metadata only.</p>
+
+    <h2>Optional cloud verification (off by default)</h2>
+    <p><strong>Current state.</strong> Cloud verification stays switched off in this release, and this release is not
+    connected to a real cloud service. The default endpoint is the reserved placeholder domain
+    <code>cloud-guard.sancai.invalid</code>, which never resolves, so no request can actually leave your machine.</p>
+    <p><strong>Enabling requires two conditions.</strong> The feature is off by default (<code>DEFAULT_ENABLED=False</code>).
+    Turning it on requires both your explicit consent (<code>consent=True</code>) and an <code>https://</code> endpoint;
+    if either is missing, the request is refused and the feature stays off.</p>
+    <p><strong>What is sent.</strong> Only 14 metadata fields, plus one client-version header
+    (<code>X-Sancai-Client</code>): <code>schema</code>, <code>client_version</code>, <code>protocol</code>,
+    <code>port</code>, <code>size_bucket</code>, <code>tcp_flags</code>, <code>src_digest</code>,
+    <code>dst_digest</code>, <code>subnet_digest</code>, <code>ts_bucket</code>, <code>local_verdict</code>,
+    <code>local_action</code>, <code>local_confidence</code>, <code>nonce</code>.</p>
+    <p><strong>De-identification.</strong> Addresses never leave in plaintext: source and destination addresses are
+    hashed with a local salt and truncated, subnets are reduced to a /24-level digest, packet sizes are bucketed at
+    512 bytes, timestamps are bucketed, and each request carries a one-time <code>nonce</code>. The salt is stored only
+    on your machine and is never uploaded, so the digests cannot be reversed by a third party.</p>
+    <p><strong>What is blocked.</strong> The payload is refused outright (not filtered) if it contains any of these 38
+    forbidden field names: <code>payload</code>, <code>raw</code>, <code>body</code>, <code>content</code>,
+    <code>data</code>, <code>url</code>, <code>uri</code>, <code>host</code>, <code>hostname</code>,
+    <code>domain</code>, <code>sni</code>, <code>referer</code>, <code>path</code>, <code>file</code>,
+    <code>filename</code>, <code>cookie</code>, <code>token</code>, <code>auth</code>, <code>password</code>,
+    <code>user</code>, <code>username</code>, <code>uid</code>, <code>email</code>, <code>phone</code>,
+    <code>mac</code>, <code>imei</code>, <code>device_id</code>, <code>cert</code>, <code>certificate</code>,
+    <code>ja3</code>, <code>ja4</code>, <code>dns</code>, <code>src_ip</code>, <code>dst_ip</code>,
+    <code>ip</code>, <code>geo</code>, <code>asn</code>, <code>org</code>. Beyond field names, 5 value-level pattern
+    checks run as well — plaintext IPv4 address, e-mail address, any <code>scheme://</code> URL, host or domain name,
+    and Windows path. Fields outside the allow-list, nested structures and over-long values (more than 64
+    characters) are rejected as well. Any single match blocks the whole payload — sensitive fields are never stripped
+    and the remainder sent.</p>
+    <p><strong>Local retention.</strong> Configuration only: <code>cloud_state.json</code> (schema
+    <code>cloud-state/1</code>, permission <code>0600</code>) records the switch, consent state and time, endpoint,
+    sample rate, timeout, local salt and timestamps. No traffic payloads, no plaintext addresses and no cloud response
+    bodies are stored.</p>
+    <p><strong>Boundaries of the cloud verdict.</strong> A cloud opinion can only tighten the local verdict by one step
+    at its strictest tier. It never loosens a verdict and never alters the original evidence chain
+    (<code>evidence_chain_untouched</code> stays true); a cross-tier tightening needs a higher confidence
+    (<code>0.85</code>) and is recorded when it is clamped back. If the endpoint is unreachable or exceeds the default
+    <code>1200</code> ms timeout, the query is abandoned and the decision falls back to local logic entirely.</p>
+    <p><strong>Withdrawal.</strong> You can turn the feature off at any time; switching it off immediately stops all
+    outbound requests and persists <code>consent=False</code>. You can also detach the cloud module from the decision
+    chain altogether, after which the app runs in purely local mode.</p>
+    <p><strong>Gap ledger stays local.</strong> Verification gaps recorded during cloud handling are written to
+    <code>cloud_gap_ledger.jsonl</code> and <code>cloud_gap_summary.json</code> (schema <code>cloud-gap/1</code>) in the
+    local state directory. They are never uploaded and are not visible to the cloud side. If writing the ledger fails,
+    the failure is handled silently with an error trace and the decision chain still returns its verdict.</p>
 
     <h2>Third-party services</h2>
-    <p>If you choose to sign a package, its file hash digest is submitted to a public timestamp authority
+    <p>Apart from the optional cloud verification query above, the app runs fully offline by default. If you choose to
+    sign a package, its file hash digest is submitted to a public timestamp authority
     (<code>timestamp.digicert.com</code>) to obtain a trusted timestamp. No file content or personal data is sent.
-    The app runs fully offline when signing is skipped.</p>
+    The app contains no auto-update telemetry, no cloud intelligence subscription and no remote control channel, and it
+    never contacts a developer server on its own; cloud verification is off as shipped.</p>
 
     <h2>Contact</h2>
     <p><a href="mailto:mxh6789@live.cn">mxh6789@live.cn</a></p>
   </div>
 
   <footer>
-    © BY LAOMENG 网络工作室 · 三才防火墙（SancaiFirewall）· 本页适用于 0.9.x 版本线
+    © BY LAOMENG 网络工作室 · 三才防火墙（SancaiFirewall）· 本页适用于 0.10.x 版本线
   </footer>
 
 </div>
